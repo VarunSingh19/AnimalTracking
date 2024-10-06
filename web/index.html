@@ -70,6 +70,29 @@
         #chart-container {
             margin-top: 20px;
         }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.3);
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .selected-animal {
+            animation: pulse 1s infinite;
+            z-index: 1000 !important;
+        }
+    </style>
     </style>
 </head>
 
@@ -159,10 +182,37 @@
         function setActiveAnimal(animal) {
             if (activeAnimal) {
                 document.querySelector(`.animal-item.active`)?.classList.remove('active');
+                markers[activeAnimal.callerId].setLabel({
+                    text: activeAnimal.icon,
+                    fontSize: '24px',
+                    className: 'animal-marker'
+                });
             }
             activeAnimal = animal;
             document.querySelector(`.animal-item:nth-child(${animals.indexOf(animal) + 1})`).classList.add('active');
             map.panTo({ lat: animal.lat, lng: animal.lng });
+
+            markers[animal.callerId].setLabel({
+                text: animal.icon,
+                fontSize: '36px',
+                className: 'animal-marker selected-animal'
+            });
+
+            const pulseCircle = new google.maps.Circle({
+                strokeColor: '#FF0000',
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: '#FF0000',
+                fillOpacity: 0.35,
+                map: map,
+                center: { lat: animal.lat, lng: animal.lng },
+                radius: 100,
+                animated: true
+            });
+
+            setTimeout(() => {
+                pulseCircle.setMap(null);
+            }, 3000);
         }
 
         function updateAnimalLocations() {
@@ -178,6 +228,14 @@
 
                 const marker = markers[animal.callerId];
                 marker.setPosition({ lat: newLat, lng: newLng });
+
+                if (activeAnimal && activeAnimal.callerId === animal.callerId) {
+                    marker.setLabel({
+                        text: animal.icon,
+                        fontSize: '36px',
+                        className: 'animal-marker selected-animal'
+                    });
+                }
             });
 
             updateChart();
