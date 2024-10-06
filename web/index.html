@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animal GPS Tracker</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=&callback=initMap" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-panel {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .animal-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .animal-item {
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .animal-item:hover {
+            background-color: #d0d0d0;
+        }
+
+        .animal-item.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #chart-container {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Animal GPS Tracker</h1>
+        <div id="map"></div>
+        <div class="info-panel">
+            <h3>Tracked Animals</h3>
+            <div class="animal-list" id="animal-list"></div>
+        </div>
+        <div class="info-panel">
+            <h3>Movement Chart</h3>
+            <div id="chart-container">
+                <canvas id="movement-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const animals = [
+            { callerId: 'Animal001', name: 'Elephant', lat: 19.2183, lng: 72.9145, color: '#FF5733' },
+            { callerId: 'Animal002', name: 'Tiger', lat: 19.2270, lng: 72.9052, color: '#FFC300' },
+            { callerId: 'Animal003', name: 'Deer', lat: 19.2154, lng: 72.9220, color: '#DAF7A6' },
+            { callerId: 'Animal004', name: 'Fox', lat: 19.2090, lng: 72.9130, color: '#FF5733' },
+            { callerId: 'Animal005', name: 'Wolf', lat: 19.2240, lng: 72.9180, color: '#C70039' },
+            { callerId: 'Animal006', name: 'Leopard', lat: 19.2210, lng: 72.9090, color: '#900C3F' },
+            { callerId: 'Animal007', name: 'Bear', lat: 19.2300, lng: 72.9250, color: '#581845' },
+            { callerId: 'Animal008', name: 'Boar', lat: 19.2130, lng: 72.9280, color: '#FFC300' },
+            { callerId: 'Animal009', name: 'Monkey', lat: 19.2060, lng: 72.9210, color: '#DAF7A6' },
+            { callerId: 'Animal010', name: 'Rabbit', lat: 19.2020, lng: 72.9240, color: '#FF5733' }
+        ];
+        let map, markers = {}, activeAnimal = null;
+        let chart;
+
+        function initMap() {
+            const mapOptions = {
+                zoom: 12,
+                center: { lat: 19.2183, lng: 72.9145 },
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            };
+
+            map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+            animals.forEach((animal) => {
+                const marker = new google.maps.Marker({
+                    position: { lat: animal.lat, lng: animal.lng },
+                    map: map,
+                    title: animal.name,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: animal.color,
+                        fillOpacity: 0.8,
+                        strokeWeight: 0,
+                        scale: 8
+                    }
+                });
+
+                markers[animal.callerId] = marker;
+
+                marker.addListener('click', () => {
+                    setActiveAnimal(animal);
+                });
+            });
+
+            populateAnimalList();
+            initChart();
+            setInterval(updateAnimalLocations, 5000);
+        }
+
+        function populateAnimalList() {
+            const animalList = document.getElementById('animal-list');
+            animals.forEach(animal => {
+                const animalItem = document.createElement('div');
+                animalItem.className = 'animal-item';
+                animalItem.textContent = animal.name;
+                animalItem.addEventListener('click', () => setActiveAnimal(animal));
+                animalList.appendChild(animalItem);
+            });
+        }
+
+        function setActiveAnimal(animal) {
+            if (activeAnimal) {
+                document.querySelector(`.animal-item.active`)?.classList.remove('active');
+            }
+            activeAnimal = animal;
+            document.querySelector(`.animal-item:nth-child(${animals.indexOf(animal) + 1})`).classList.add('active');
+            map.panTo({ lat: animal.lat, lng: animal.lng });
+        }
+
+        function updateAnimalLocations() {
+            animals.forEach((animal) => {
+                const newLat = animal.lat + (Math.random() - 0.5) * 0.01;
+                const newLng = animal.lng + (Math.random() - 0.5) * 0.01;
+
+                const distance = calculateDistance(animal.lat, animal.lng, newLat, newLng);
+                animal.totalDistance = (animal.totalDistance || 0) + distance;
+
+                animal.lat = newLat;
+                animal.lng = newLng;
+
+                const marker = markers[animal.callerId];
+                marker.setPosition({ lat: newLat, lng: newLng });
+            });
+
+            updateChart();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('movement-chart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: animals.map(animal => animal.name),
+                    datasets: [{
+                        label: 'Total Distance (km)',
+                        data: animals.map(animal => 0),
+                        backgroundColor: animals.map(animal => animal.color),
+                        borderColor: animals.map(animal => animal.color),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total Distance (km)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Animals'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            chart.data.datasets[0].data = animals.map(animal => parseFloat(animal.totalDistance.toFixed(3)));
+            chart.update();
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radius of the Earth in km
+            const dLat = deg2rad(lat2 - lat1);
+            const dLon = deg2rad(lon2 - lon1);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c; // Distance in km
+            return distance;
+        }
+
+        function deg2rad(deg) {
+            return deg * (Math.PI / 180);
+        }
+
+        window.initMap = initMap;
+    </script>
+</body>
+
+</html>
