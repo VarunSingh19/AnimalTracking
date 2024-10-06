@@ -229,6 +229,7 @@
                 const marker = markers[animal.callerId];
                 marker.setPosition({ lat: newLat, lng: newLng });
 
+                // Update the position of the selected animal's label if it's active
                 if (activeAnimal && activeAnimal.callerId === animal.callerId) {
                     marker.setLabel({
                         text: animal.icon,
@@ -240,8 +241,9 @@
 
             updateChart();
             updateCircle();
-            updateConnections();
+            updateConnections(); // Update connections after animal positions change
         }
+
 
         function initChart() {
             const ctx = document.getElementById('movement-chart').getContext('2d');
@@ -349,18 +351,11 @@
                         map: map
                     });
 
-                    const distance = calculateDistance(animals[i].lat, animals[i].lng, animals[j].lat, animals[j].lng);
-                    const midpoint = google.maps.geometry.spherical.interpolate(
-                        new google.maps.LatLng(animals[i].lat, animals[i].lng),
-                        new google.maps.LatLng(animals[j].lat, animals[j].lng),
-                        0.5
-                    );
-
                     const label = new google.maps.Marker({
-                        position: midpoint,
+                        position: { lat: 0, lng: 0 },
                         map: map,
                         label: {
-                            text: `${distance.toFixed(2)} km`,
+                            text: '0 km',
                             color: '#000000',
                             fontSize: '12px'
                         },
@@ -370,26 +365,27 @@
                         }
                     });
 
-                    connections.push({ line: connection, label: label });
+                    connections.push({ line: connection, label: label, from: i, to: j });
                 }
             }
+            updateConnections();
         }
 
         function updateConnections() {
-            connections.forEach((connection, index) => {
-                const i = Math.floor(index / (animals.length - 1));
-                const j = (index % (animals.length - 1)) + i + 1;
+            connections.forEach((connection) => {
+                const fromAnimal = animals[connection.from];
+                const toAnimal = animals[connection.to];
 
                 const path = [
-                    { lat: animals[i].lat, lng: animals[i].lng },
-                    { lat: animals[j].lat, lng: animals[j].lng }
+                    { lat: fromAnimal.lat, lng: fromAnimal.lng },
+                    { lat: toAnimal.lat, lng: toAnimal.lng }
                 ];
                 connection.line.setPath(path);
 
-                const distance = calculateDistance(animals[i].lat, animals[i].lng, animals[j].lat, animals[j].lng);
+                const distance = calculateDistance(fromAnimal.lat, fromAnimal.lng, toAnimal.lat, toAnimal.lng);
                 const midpoint = google.maps.geometry.spherical.interpolate(
-                    new google.maps.LatLng(animals[i].lat, animals[i].lng),
-                    new google.maps.LatLng(animals[j].lat, animals[j].lng),
+                    new google.maps.LatLng(fromAnimal.lat, fromAnimal.lng),
+                    new google.maps.LatLng(toAnimal.lat, toAnimal.lng),
                     0.5
                 );
 
