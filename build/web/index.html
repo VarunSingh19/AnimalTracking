@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Animal GPS Tracker</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=&callback=initMap" defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=&libraries=geometry&callback=initMap" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
     <style>
         body {
@@ -91,19 +91,19 @@
 
     <script>
         const animals = [
-            { callerId: 'Animal001', name: 'Elephant', lat: 19.2183, lng: 72.9145, color: '#FF5733' },
-            { callerId: 'Animal002', name: 'Tiger', lat: 19.2270, lng: 72.9052, color: '#FFC300' },
-            { callerId: 'Animal003', name: 'Deer', lat: 19.2154, lng: 72.9220, color: '#DAF7A6' },
-            { callerId: 'Animal004', name: 'Fox', lat: 19.2090, lng: 72.9130, color: '#FF5733' },
-            { callerId: 'Animal005', name: 'Wolf', lat: 19.2240, lng: 72.9180, color: '#C70039' },
-            { callerId: 'Animal006', name: 'Leopard', lat: 19.2210, lng: 72.9090, color: '#900C3F' },
-            { callerId: 'Animal007', name: 'Bear', lat: 19.2300, lng: 72.9250, color: '#581845' },
-            { callerId: 'Animal008', name: 'Boar', lat: 19.2130, lng: 72.9280, color: '#FFC300' },
-            { callerId: 'Animal009', name: 'Monkey', lat: 19.2060, lng: 72.9210, color: '#DAF7A6' },
-            { callerId: 'Animal010', name: 'Rabbit', lat: 19.2020, lng: 72.9240, color: '#FF5733' }
+            { callerId: 'Animal001', name: 'Elephant', lat: 19.2183, lng: 72.9145, color: '#FF5733', icon: '🐘' },
+            { callerId: 'Animal002', name: 'Tiger', lat: 19.2270, lng: 72.9052, color: '#FFC300', icon: '🐅' },
+            { callerId: 'Animal003', name: 'Deer', lat: 19.2154, lng: 72.9220, color: '#DAF7A6', icon: '🦌' },
+            { callerId: 'Animal004', name: 'Fox', lat: 19.2090, lng: 72.9130, color: '#FF5733', icon: '🦊' },
+            { callerId: 'Animal005', name: 'Wolf', lat: 19.2240, lng: 72.9180, color: '#C70039', icon: '🐺' },
+            { callerId: 'Animal006', name: 'Leopard', lat: 19.2210, lng: 72.9090, color: '#900C3F', icon: '🐆' },
+            { callerId: 'Animal007', name: 'Bear', lat: 19.2300, lng: 72.9250, color: '#581845', icon: '🐻' },
+            { callerId: 'Animal008', name: 'Boar', lat: 19.2130, lng: 72.9280, color: '#FFC300', icon: '🐗' },
+            { callerId: 'Animal009', name: 'Monkey', lat: 19.2060, lng: 72.9210, color: '#DAF7A6', icon: '🐒' },
+            { callerId: 'Animal010', name: 'Rabbit', lat: 19.2020, lng: 72.9240, color: '#FF5733', icon: '🐰' }
         ];
         let map, markers = {}, activeAnimal = null;
-        let chart;
+        let chart, circle, connections = [];
 
         function initMap() {
             const mapOptions = {
@@ -125,12 +125,9 @@
                     position: { lat: animal.lat, lng: animal.lng },
                     map: map,
                     title: animal.name,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        fillColor: animal.color,
-                        fillOpacity: 0.8,
-                        strokeWeight: 0,
-                        scale: 8
+                    label: {
+                        text: animal.icon,
+                        fontSize: '24px'
                     }
                 });
 
@@ -143,6 +140,8 @@
 
             populateAnimalList();
             initChart();
+            drawCircle();
+            drawConnections();
             setInterval(updateAnimalLocations, 5000);
         }
 
@@ -151,7 +150,7 @@
             animals.forEach(animal => {
                 const animalItem = document.createElement('div');
                 animalItem.className = 'animal-item';
-                animalItem.textContent = animal.name;
+                animalItem.textContent = `${animal.icon} ${animal.name}`;
                 animalItem.addEventListener('click', () => setActiveAnimal(animal));
                 animalList.appendChild(animalItem);
             });
@@ -182,6 +181,8 @@
             });
 
             updateChart();
+            updateCircle();
+            updateConnections();
         }
 
         function initChart() {
@@ -239,6 +240,108 @@
 
         function deg2rad(deg) {
             return deg * (Math.PI / 180);
+        }
+
+        function drawCircle() {
+            const bounds = new google.maps.LatLngBounds();
+            animals.forEach(animal => {
+                bounds.extend(new google.maps.LatLng(animal.lat, animal.lng));
+            });
+
+            const center = bounds.getCenter();
+            const radius = google.maps.geometry.spherical.computeDistanceBetween(center, bounds.getNorthEast());
+
+            circle = new google.maps.Circle({
+                strokeColor: '#FF0000',
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: '#FF0000',
+                fillOpacity: 0.1,
+                map,
+                center: center,
+                radius: radius
+            });
+        }
+
+        function updateCircle() {
+            const bounds = new google.maps.LatLngBounds();
+            animals.forEach(animal => {
+                bounds.extend(new google.maps.LatLng(animal.lat, animal.lng));
+            });
+
+            const center = bounds.getCenter();
+            const radius = google.maps.geometry.spherical.computeDistanceBetween(center, bounds.getNorthEast());
+
+            circle.setCenter(center);
+            circle.setRadius(radius);
+        }
+
+        function drawConnections() {
+            for (let i = 0; i < animals.length; i++) {
+                for (let j = i + 1; j < animals.length; j++) {
+                    const connection = new google.maps.Polyline({
+                        path: [
+                            { lat: animals[i].lat, lng: animals[i].lng },
+                            { lat: animals[j].lat, lng: animals[j].lng }
+                        ],
+                        geodesic: true,
+                        strokeColor: '#000000',
+                        strokeOpacity: 0.5,
+                        strokeWeight: 2,
+                        map: map
+                    });
+
+                    const distance = calculateDistance(animals[i].lat, animals[i].lng, animals[j].lat, animals[j].lng);
+                    const midpoint = google.maps.geometry.spherical.interpolate(
+                        new google.maps.LatLng(animals[i].lat, animals[i].lng),
+                        new google.maps.LatLng(animals[j].lat, animals[j].lng),
+                        0.5
+                    );
+
+                    const label = new google.maps.Marker({
+                        position: midpoint,
+                        map: map,
+                        label: {
+                            text: `${distance.toFixed(2)} km`,
+                            color: '#000000',
+                            fontSize: '12px'
+                        },
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 0
+                        }
+                    });
+
+                    connections.push({ line: connection, label: label });
+                }
+            }
+        }
+
+        function updateConnections() {
+            connections.forEach((connection, index) => {
+                const i = Math.floor(index / (animals.length - 1));
+                const j = (index % (animals.length - 1)) + i + 1;
+
+                const path = [
+                    { lat: animals[i].lat, lng: animals[i].lng },
+                    { lat: animals[j].lat, lng: animals[j].lng }
+                ];
+                connection.line.setPath(path);
+
+                const distance = calculateDistance(animals[i].lat, animals[i].lng, animals[j].lat, animals[j].lng);
+                const midpoint = google.maps.geometry.spherical.interpolate(
+                    new google.maps.LatLng(animals[i].lat, animals[i].lng),
+                    new google.maps.LatLng(animals[j].lat, animals[j].lng),
+                    0.5
+                );
+
+                connection.label.setPosition(midpoint);
+                connection.label.setLabel({
+                    text: `${distance.toFixed(2)} km`,
+                    color: '#000000',
+                    fontSize: '12px'
+                });
+            });
         }
 
         window.initMap = initMap;
