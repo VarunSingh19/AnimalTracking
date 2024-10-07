@@ -7,12 +7,14 @@
     <title>Animal GPS Tracker</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=&libraries=geometry&callback=initMap" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Poppins', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f0f0f0;
+            background-color: #f0f4f8;
+            color: #333;
         }
 
         .container {
@@ -22,53 +24,81 @@
         }
 
         h1 {
-            color: #333;
+            color: #2c3e50;
             text-align: center;
             margin-bottom: 30px;
+            font-weight: 600;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
         #map {
             height: 500px;
             width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        #map:hover {
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+            transform: translateY(-5px);
         }
 
         .info-panel {
             background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .info-panel:hover {
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+            transform: translateY(-5px);
+        }
+
+        .info-panel h3 {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
         }
 
         .animal-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 15px;
             margin-top: 20px;
         }
 
         .animal-item {
-            background-color: #e0e0e0;
-            border-radius: 5px;
-            padding: 5px 10px;
-            font-size: 14px;
+            background-color: #ecf0f1;
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-size: 16px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
         }
 
         .animal-item:hover {
-            background-color: #d0d0d0;
+            background-color: #e0e6e8;
+            transform: translateY(-3px);
         }
 
         .animal-item.active {
-            background-color: #4CAF50;
+            background-color: #3498db;
             color: white;
+            border-color: #2980b9;
         }
 
         #chart-container {
             margin-top: 20px;
+            height: 300px;
         }
 
         @keyframes pulse {
@@ -89,25 +119,96 @@
         }
 
         .selected-animal {
-            animation: pulse 1s infinite;
+            animation: pulse 1.5s infinite;
             z-index: 1000 !important;
         }
-    </style>
+
+        /* New styles for modern look */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .map-container,
+        .chart-container {
+            grid-column: span 2;
+        }
+
+        .animal-list-container,
+        .stats-container {
+            grid-column: span 1;
+        }
+
+        .stat-item {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            background-color: #e9ecef;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            color: #3498db;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .map-container,
+            .chart-container,
+            .animal-list-container,
+            .stats-container {
+                grid-column: span 1;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <h1>Animal GPS Tracker</h1>
-        <div id="map"></div>
-        <div class="info-panel">
-            <h3>Tracked Animals</h3>
-            <div class="animal-list" id="animal-list"></div>
-        </div>
-        <div class="info-panel">
-            <h3>Movement Chart</h3>
-            <div id="chart-container">
-                <canvas id="movement-chart"></canvas>
+        <div class="dashboard">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            <div class="animal-list-container info-panel">
+                <h3>Tracked Animals</h3>
+                <div class="animal-list" id="animal-list"></div>
+            </div>
+            <div class="stats-container info-panel">
+                <h3>Statistics</h3>
+                <div class="stat-item">
+                    <div class="stat-label">Total Animals Tracked</div>
+                    <div class="stat-value" id="total-animals">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Average Distance Traveled</div>
+                    <div class="stat-value" id="avg-distance">0 km</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Most Active Animal</div>
+                    <div class="stat-value" id="most-active">N/A</div>
+                </div>
+            </div>
+            <div class="chart-container info-panel">
+                <h3>Movement Chart</h3>
+                <div id="chart-container">
+                    <canvas id="movement-chart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -144,6 +245,7 @@
             map = new google.maps.Map(document.getElementById('map'), mapOptions);
 
             animals.forEach((animal) => {
+                animal.totalDistance = 0;
                 const marker = new google.maps.Marker({
                     position: { lat: animal.lat, lng: animal.lng },
                     map: map,
@@ -165,7 +267,20 @@
             initChart();
             drawCircle();
             drawConnections();
+            updateStatistics();
             setInterval(updateAnimalLocations, 5000);
+        }
+        function updateStatistics() {
+            document.getElementById('total-animals').textContent = animals.length;
+
+            const totalDistance = animals.reduce((sum, animal) => sum + (animal.totalDistance || 0), 0);
+            const avgDistance = totalDistance / animals.length;
+            document.getElementById('avg-distance').textContent = `${avgDistance.toFixed(2)} km`;
+
+            const mostActive = animals.reduce((prev, current) =>
+                (prev.totalDistance > current.totalDistance) ? prev : current
+            );
+            document.getElementById('most-active').textContent = `${mostActive.name} (${mostActive.totalDistance.toFixed(2)} km)`;
         }
 
         function populateAnimalList() {
@@ -242,6 +357,7 @@
             updateChart();
             updateCircle();
             updateConnections(); // Update connections after animal positions change
+            updateStatistics();
         }
 
 
